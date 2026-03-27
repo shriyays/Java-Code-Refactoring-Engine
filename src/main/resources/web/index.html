@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Java Refactoring Engine</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ───────────────────────────────────────────────── */
+    header {
+      background: #1a1d2e;
+      border-bottom: 1px solid #2d3148;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    header .logo {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    header h1 { font-size: 18px; font-weight: 600; color: #f1f5f9; }
+    header p  { font-size: 13px; color: #64748b; margin-top: 1px; }
+
+    /* ── Main layout ──────────────────────────────────────────── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: calc(100vh - 69px);
+    }
+
+    /* ── Left panel ───────────────────────────────────────────── */
+    .panel-left {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #2d3148;
+    }
+
+    .panel-header {
+      background: #1a1d2e;
+      padding: 12px 20px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+      border-bottom: 1px solid #2d3148;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .panel-header .badge {
+      background: #6366f1;
+      color: white;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    textarea#codeInput {
+      flex: 1;
+      background: #0d1117;
+      color: #e2e8f0;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 20px;
+      font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      tab-size: 4;
+    }
+    textarea#codeInput::placeholder { color: #374151; }
+
+    .action-bar {
+      background: #1a1d2e;
+      border-top: 1px solid #2d3148;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    button#analyzeBtn {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    button#analyzeBtn:hover  { opacity: 0.9; }
+    button#analyzeBtn:active { transform: scale(0.98); }
+    button#analyzeBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    button#clearBtn {
+      background: transparent;
+      color: #64748b;
+      border: 1px solid #2d3148;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    button#clearBtn:hover { color: #e2e8f0; border-color: #64748b; }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .samples { display: flex; gap: 8px; margin-left: auto; }
+    .sample-btn {
+      background: transparent;
+      color: #6366f1;
+      border: 1px solid #6366f1;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .sample-btn:hover { background: rgba(99,102,241,0.1); }
+
+    /* ── Right panel ──────────────────────────────────────────── */
+    .panel-right {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Tabs ─────────────────────────────────────────────────── */
+    .tab-bar {
+      background: #1a1d2e;
+      border-bottom: 1px solid #2d3148;
+      display: flex;
+      flex-shrink: 0;
+    }
+    .tab {
+      padding: 12px 20px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #64748b;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+    .tab:hover { color: #94a3b8; }
+    .tab.active { color: #6366f1; border-bottom-color: #6366f1; }
+
+    .tab-panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+    .tab-panel.active { display: flex; }
+
+    /* ── Analysis tab content ─────────────────────────────────── */
+    #resultsArea {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    #resultsArea::-webkit-scrollbar { width: 6px; }
+    #resultsArea::-webkit-scrollbar-track { background: transparent; }
+    #resultsArea::-webkit-scrollbar-thumb { background: #2d3148; border-radius: 3px; }
+
+    /* ── Refactored code tab content ──────────────────────────── */
+    .code-tab-inner {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .code-toolbar {
+      background: #161b22;
+      border-bottom: 1px solid #2d3148;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .code-toolbar span {
+      font-size: 11px;
+      color: #64748b;
+      font-family: monospace;
+    }
+    .copy-btn {
+      background: transparent;
+      color: #6366f1;
+      border: 1px solid #6366f1;
+      padding: 4px 12px;
+      border-radius: 5px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .copy-btn:hover { background: rgba(99,102,241,0.15); }
+
+    #refactoredCode {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background: #0d1117;
+      font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #e2e8f0;
+      white-space: pre;
+      tab-size: 4;
+    }
+    #refactoredCode::-webkit-scrollbar { width: 6px; }
+    #refactoredCode::-webkit-scrollbar-track { background: transparent; }
+    #refactoredCode::-webkit-scrollbar-thumb { background: #2d3148; border-radius: 3px; }
+
+    /* Simple syntax highlight colours */
+    .kw  { color: #c792ea; }   /* keywords */
+    .ty  { color: #82aaff; }   /* types / class names */
+    .str { color: #c3e88d; }   /* strings */
+    .cmt { color: #546e7a; font-style: italic; }  /* comments */
+    .num { color: #f78c6c; }   /* numbers */
+    .ann { color: #ffcb6b; }   /* annotations */
+
+    /* ── Shared card styles ───────────────────────────────────── */
+    .empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #374151;
+      text-align: center;
+      gap: 12px;
+    }
+    .empty-state .icon { font-size: 48px; }
+    .empty-state h3 { font-size: 16px; color: #4b5563; }
+    .empty-state p  { font-size: 13px; }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: #1a1d2e;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+    .stat-card .stat-value { font-size: 26px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+    .stat-card .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+    .stat-card.smells    .stat-value { color: #f59e0b; }
+    .stat-card.fixed     .stat-value { color: #10b981; }
+    .stat-card.skipped   .stat-value { color: #ef4444; }
+    .stat-card.rate      .stat-value { color: #6366f1; }
+    .stat-card.remaining .stat-value { color: #10b981; }
+    .stat-card.remaining.dirty .stat-value { color: #ef4444; }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 10px;
+      margin-top: 20px;
+    }
+
+    .smell-card {
+      background: #1a1d2e;
+      border: 1px solid #2d3148;
+      border-left: 3px solid #f59e0b;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .smell-card .smell-type     { font-size: 12px; font-weight: 600; color: #f59e0b; margin-bottom: 2px; }
+    .smell-card .smell-location { font-size: 12px; color: #94a3b8; font-family: monospace; margin-bottom: 3px; }
+    .smell-card .smell-detail   { font-size: 12px; color: #64748b; }
+
+    .result-card {
+      background: #1a1d2e;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .result-card.success { border-left: 3px solid #10b981; }
+    .result-card.failure { border-left: 3px solid #ef4444; }
+    .result-card .result-status  { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+    .result-card.success .result-status { color: #10b981; }
+    .result-card.failure .result-status { color: #ef4444; }
+    .result-card .result-class { font-size: 12px; color: #94a3b8; font-family: monospace; margin-bottom: 3px; }
+    .result-card .result-msg   { font-size: 12px; color: #64748b; }
+
+    .error-box {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px;
+      padding: 14px 16px;
+      color: #fca5a5;
+      font-size: 13px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .success-banner {
+      background: rgba(16,185,129,0.1);
+      border: 1px solid rgba(16,185,129,0.3);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      color: #6ee7b7;
+      font-size: 14px;
+    }
+    .success-banner .big { font-size: 32px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚡</div>
+  <div>
+    <h1>Java Refactoring Engine</h1>
+    <p>AST-based code smell detection &amp; automated refactoring</p>
+  </div>
+</header>
+
+<main>
+  <!-- ── Left: code editor ───────────────────────────────────── -->
+  <div class="panel-left">
+    <div class="panel-header">
+      Java Source Input
+      <span class="badge">JavaParser AST</span>
+    </div>
+
+    <textarea id="codeInput" spellcheck="false"
+      placeholder="Paste your Java class here…"></textarea>
+
+    <div class="action-bar">
+      <button id="analyzeBtn" onclick="analyze()">
+        <div class="spinner" id="spinner"></div>
+        <span id="btnText">Analyze &amp; Refactor</span>
+      </button>
+      <button id="clearBtn" onclick="clearAll()">Clear</button>
+      <div class="samples">
+        <button class="sample-btn" onclick="loadSample('longMethod')">Long Method</button>
+        <button class="sample-btn" onclick="loadSample('godClass')">God Class</button>
+        <button class="sample-btn" onclick="loadSample('params')">Long Params</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Right: tabbed results ───────────────────────────────── -->
+  <div class="panel-right">
+    <div class="tab-bar">
+      <div class="tab active" id="tab-analysis" onclick="switchTab('analysis')">Analysis Results</div>
+      <div class="tab"        id="tab-code"     onclick="switchTab('code')">Refactored Code</div>
+    </div>
+
+    <!-- Tab 1: analysis -->
+    <div class="tab-panel active" id="panel-analysis">
+      <div id="resultsArea">
+        <div class="empty-state">
+          <div class="icon">🔍</div>
+          <h3>No analysis yet</h3>
+          <p>Paste Java code on the left and click Analyze</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: refactored code -->
+    <div class="tab-panel" id="panel-code">
+      <div class="code-tab-inner">
+        <div class="code-toolbar">
+          <span id="codeLabel">Refactored output will appear here</span>
+          <button class="copy-btn" onclick="copyCode()">Copy</button>
+        </div>
+        <div id="refactoredCode">
+          <div class="empty-state" style="height:100%;justify-content:center">
+            <div class="icon">📄</div>
+            <h3>No output yet</h3>
+            <p>Run an analysis first</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  // ── Tab switching ────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    document.getElementById('panel-' + name).classList.add('active');
+  }
+
+  // ── Sample snippets ──────────────────────────────────────────
+  const SAMPLES = {
+    longMethod: `public class OrderProcessor {
+    public void processOrder(Order order) {
+        System.out.println("Step 1");
+        System.out.println("Step 2");
+        System.out.println("Step 3");
+        System.out.println("Step 4");
+        System.out.println("Step 5");
+        System.out.println("Step 6");
+        System.out.println("Step 7");
+        System.out.println("Step 8");
+        System.out.println("Step 9");
+        System.out.println("Step 10");
+        System.out.println("Step 11");
+        System.out.println("Step 12");
+        System.out.println("Step 13");
+        System.out.println("Step 14");
+        System.out.println("Step 15");
+        System.out.println("Step 16");
+        System.out.println("Step 17");
+        System.out.println("Step 18");
+        System.out.println("Step 19");
+        System.out.println("Step 20");
+        System.out.println("Step 21");
+    }
+}`,
+    godClass: `public class AppManager {
+    private String name;
+    private String email;
+    private String phone;
+    private int age;
+    private String address;
+    private String city;
+    private String country;
+
+    public void login() { int x=1; int y=2; }
+    public void logout() { int x=1; int y=2; }
+    public void register() { int x=1; int y=2; }
+    public void sendEmail() { int x=1; int y=2; }
+    public void generateReport() { int x=1; int y=2; }
+    public void processPayment() { int x=1; int y=2; }
+    public void updateProfile() { int x=1; int y=2; }
+    public void deleteAccount() { int x=1; int y=2; }
+    public void fetchData() { int x=1; int y=2; }
+    public void cacheResult() { int x=1; int y=2; }
+    public void validateInput() { int x=1; int y=2; }
+    public void auditLog() { int x=1; int y=2; }
+    public void scheduleTask() { int x=1; int y=2; }
+    public void notifyUser() { int x=1; int y=2; }
+    public void exportData() { int x=1; int y=2; }
+    public void importData() { int x=1; int y=2; }
+}`,
+    params: `public class UserService {
+    public void createUser(
+            String firstName,
+            String lastName,
+            String email,
+            String phone,
+            String address) {
+        System.out.println("Creating user");
+    }
+}`
+  };
+
+  function loadSample(name) {
+    document.getElementById('codeInput').value = SAMPLES[name];
+  }
+
+  function clearAll() {
+    document.getElementById('codeInput').value = '';
+    document.getElementById('resultsArea').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔍</div>
+        <h3>No analysis yet</h3>
+        <p>Paste Java code on the left and click Analyze</p>
+      </div>`;
+    document.getElementById('refactoredCode').innerHTML = `
+      <div class="empty-state" style="height:100%;justify-content:center">
+        <div class="icon">📄</div>
+        <h3>No output yet</h3>
+        <p>Run an analysis first</p>
+      </div>`;
+    document.getElementById('codeLabel').textContent = 'Refactored output will appear here';
+    switchTab('analysis');
+  }
+
+  // ── Analyze ──────────────────────────────────────────────────
+  async function analyze() {
+    const code = document.getElementById('codeInput').value.trim();
+    if (!code) { showError('Please paste some Java code first.'); return; }
+
+    setLoading(true);
+    try {
+      const res  = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) { showError(data.error || 'Server error'); return; }
+      renderResults(data);
+    } catch (e) {
+      showError('Could not reach the server. Is it running on port 8080?');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Render analysis tab ──────────────────────────────────────
+  function renderResults(data) {
+    // Stats
+    const remaining = data.remainingSmells ?? 0;
+    const remainingClass = remaining === 0 ? 'remaining' : 'remaining dirty';
+    const remainingVal   = remaining === 0 ? '✓' : remaining;
+    let html = `<div class="stats-row">
+      <div class="stat-card smells">
+        <div class="stat-value">${data.totalSmells}</div>
+        <div class="stat-label">Detected</div>
+      </div>
+      <div class="stat-card fixed">
+        <div class="stat-value">${data.totalRefactored}</div>
+        <div class="stat-label">Refactored</div>
+      </div>
+      <div class="stat-card skipped">
+        <div class="stat-value">${data.totalSkipped}</div>
+        <div class="stat-label">Skipped</div>
+      </div>
+      <div class="stat-card rate">
+        <div class="stat-value">${data.refactorRate}%</div>
+        <div class="stat-label">Rate</div>
+      </div>
+      <div class="stat-card ${remainingClass}">
+        <div class="stat-value">${remainingVal}</div>
+        <div class="stat-label">Remaining</div>
+      </div>
+    </div>`;
+
+    if (data.totalSmells === 0) {
+      html += `<div class="success-banner"><div class="big">✅</div>No code smells detected. Your code looks clean!</div>`;
+      document.getElementById('resultsArea').innerHTML = html;
+      renderCode(data.refactoredCode, 'No changes — code was already clean');
+      return;
+    }
+
+    // Smells
+    html += `<div class="section-title">Detected Smells (${data.smells.length})</div>`;
+    for (const s of data.smells) {
+      const loc = s.member ? `${s.className}#${s.member}` : s.className;
+      html += `<div class="smell-card">
+        <div style="font-size:16px;flex-shrink:0;margin-top:1px">⚠️</div>
+        <div>
+          <div class="smell-type">${esc(s.type)}</div>
+          <div class="smell-location">${esc(loc)} &nbsp;·&nbsp; line ${s.line}</div>
+          <div class="smell-detail">${esc(s.detail)}</div>
+        </div>
+      </div>`;
+    }
+
+    // Refactoring results
+    if (data.results.length > 0) {
+      html += `<div class="section-title">Refactoring Results (${data.results.length})</div>`;
+      for (const r of data.results) {
+        const cls    = r.success ? 'success' : 'failure';
+        const icon   = r.success ? '✅' : '⏭️';
+        const status = r.success ? 'REFACTORED' : 'SKIPPED';
+        html += `<div class="result-card ${cls}">
+          <div style="font-size:16px;flex-shrink:0;margin-top:1px">${icon}</div>
+          <div>
+            <div class="result-status">${status} — ${esc(r.smell)}</div>
+            <div class="result-class">${esc(r.className)}</div>
+            <div class="result-msg">${esc(r.message)}</div>
+          </div>
+        </div>`;
+      }
+    }
+
+    document.getElementById('resultsArea').innerHTML = html;
+
+    // Populate refactored code tab
+    const label = data.totalRefactored > 0
+      ? `${data.totalRefactored} transformation(s) applied`
+      : 'No transformations applied';
+    renderCode(data.refactoredCode, label);
+  }
+
+  // ── Render refactored code tab ───────────────────────────────
+  function renderCode(source, label) {
+    document.getElementById('codeLabel').textContent = label;
+    document.getElementById('refactoredCode').innerHTML = highlight(source || '');
+  }
+
+  // ── Minimal Java syntax highlighter ─────────────────────────
+  function highlight(code) {
+    const keywords = /\b(public|private|protected|static|final|void|class|interface|enum|extends|implements|new|return|if|else|for|while|do|switch|case|break|continue|import|package|throws|throw|try|catch|finally|this|super|null|true|false|abstract|native|synchronized|transient|volatile|instanceof|assert|default)\b/g;
+    const types    = /\b(String|int|long|double|float|boolean|char|byte|short|Integer|Long|Double|Float|Boolean|Character|Byte|Short|List|Map|Set|Object|void)\b/g;
+    const strings  = /(\"(?:[^\"\\]|\\.)*\")/g;
+    const comments = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g;
+    const numbers  = /\b(\d+\.?\d*[fFdDlL]?)\b/g;
+    const annots   = /(@\w+)/g;
+
+    // Escape HTML first, then apply highlighting
+    let out = esc(code);
+    // Apply in order: comments first (to avoid highlighting inside them)
+    out = out.replace(/\/\/(.*?)(\n|$)/g, '<span class="cmt">//$1</span>$2');
+    out = out.replace(/\/\*([\s\S]*?)\*\//g, '<span class="cmt">/*$1*/</span>');
+    out = out.replace(/(&quot;(?:[^&]|&(?!quot;))*&quot;)/g, '<span class="str">$1</span>');
+    out = out.replace(annots, '<span class="ann">$1</span>');
+    out = out.replace(keywords, '<span class="kw">$1</span>');
+    out = out.replace(types, '<span class="ty">$1</span>');
+    out = out.replace(/\b(\d+)\b/g, '<span class="num">$1</span>');
+    return out;
+  }
+
+  function copyCode() {
+    const raw = document.getElementById('codeInput')._lastRefactored || '';
+    if (!raw) return;
+    navigator.clipboard.writeText(raw).then(() => {
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 1500);
+    });
+  }
+
+  // Store raw source for copy
+  const _origRenderCode = renderCode;
+  let _rawRefactored = '';
+  function renderCode(source, label) {
+    _rawRefactored = source || '';
+    document.getElementById('codeLabel').textContent = label;
+    document.getElementById('refactoredCode').innerHTML = highlight(source || '');
+  }
+
+  function copyCode() {
+    if (!_rawRefactored) return;
+    navigator.clipboard.writeText(_rawRefactored).then(() => {
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 1500);
+    });
+  }
+
+  function showError(msg) {
+    document.getElementById('resultsArea').innerHTML = `
+      <div class="error-box">
+        <span style="font-size:18px;flex-shrink:0">❌</span>
+        <div><strong>Error</strong><br>${esc(msg)}</div>
+      </div>`;
+  }
+
+  function setLoading(on) {
+    document.getElementById('analyzeBtn').disabled = on;
+    document.getElementById('spinner').style.display  = on ? 'block' : 'none';
+    document.getElementById('btnText').textContent    = on ? 'Analyzing…' : 'Analyze & Refactor';
+  }
+
+  function esc(str) {
+    return String(str ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') analyze();
+  });
+</script>
+</body>
+</html>

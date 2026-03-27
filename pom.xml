@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.refactor</groupId>
+    <artifactId>java-refactoring-engine</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>Java Code Refactoring Engine</name>
+    <description>AST-based Java code smell detector and refactoring engine using JavaParser</description>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <javaparser.version>3.25.10</javaparser.version>
+        <junit.version>5.10.1</junit.version>
+        <pitest.version>1.15.3</pitest.version>
+        <pitest.junit5.version>1.2.1</pitest.junit5.version>
+    </properties>
+
+    <dependencies>
+        <!-- JavaParser for AST analysis -->
+        <dependency>
+            <groupId>com.github.javaparser</groupId>
+            <artifactId>javaparser-symbol-solver-core</artifactId>
+            <version>${javaparser.version}</version>
+        </dependency>
+
+        <!-- JUnit 5 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Maven Surefire for JUnit 5 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.3</version>
+            </plugin>
+
+            <!-- Exec plugin: CLI engine or web server -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.1</version>
+                <executions>
+                    <!-- mvn exec:java@cli  → runs the CLI engine -->
+                    <execution>
+                        <id>cli</id>
+                        <configuration>
+                            <mainClass>com.refactor.engine.RefactoringEngine</mainClass>
+                        </configuration>
+                    </execution>
+                    <!-- mvn exec:java@web  → starts the web server -->
+                    <execution>
+                        <id>web</id>
+                        <configuration>
+                            <mainClass>com.refactor.web.WebServer</mainClass>
+                        </configuration>
+                    </execution>
+                </executions>
+                <!-- default (mvn exec:java) also starts the web server -->
+                <configuration>
+                    <mainClass>com.refactor.web.WebServer</mainClass>
+                </configuration>
+            </plugin>
+
+            <!-- PIT Mutation Testing -->
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>${pitest.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-junit5-plugin</artifactId>
+                        <version>${pitest.junit5.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <targetClasses>
+                        <param>com.refactor.*</param>
+                    </targetClasses>
+                    <targetTests>
+                        <param>com.refactor.*Test</param>
+                    </targetTests>
+                    <mutators>
+                        <mutator>DEFAULTS</mutator>
+                    </mutators>
+                    <outputFormats>
+                        <outputFormat>HTML</outputFormat>
+                        <outputFormat>XML</outputFormat>
+                    </outputFormats>
+                    <timestampedReports>false</timestampedReports>
+                    <threads>2</threads>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
